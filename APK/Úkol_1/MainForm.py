@@ -92,7 +92,7 @@ class Ui_MainForm(object):
         self.retranslateUi(MainForm)
         QtCore.QMetaObject.connectSlotsByName(MainForm)
         
-        # Connect signals and slots
+        # Connect buttons to functions
         self.actionOpen.triggered.connect(self.openFileClick)
         self.actionPoint_polygon.triggered.connect(self.changeStatusClick)
         self.actionClear.triggered.connect(self.clearClick)
@@ -100,23 +100,19 @@ class Ui_MainForm(object):
         self.actionWinding_Number.triggered.connect(self.analyzeWindingNumberClick)
                 
     def changeStatusClick(self, *args):
-        # User defined slot, change source
         self.Canvas.changeStatus()
         
     def clearClick(self):
-        # User defined slot, clear data
         self.Canvas.clearData()    
 
     def analyzePointAndPositionClick(self, *args):
-        # RAY CROSSING TRIGGER
         self.runAnalysis("Ray Crossing")
 
     def analyzeWindingNumberClick(self, *args):
-        # WINDING NUMBER TRIGGER
         self.runAnalysis("Winding Number")
         
     def openFileClick(self):
-        # Open file dialog for Shapefile
+        # Open shapefile dialog
         file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self.centralwidget, "Open Shapefile", "", "Shapefiles (*.shp)")
         if not file_name:
             return
@@ -128,33 +124,30 @@ class Ui_MainForm(object):
             
             loaded_polygons = []
             
-            # Bounding box of the entire shapefile for scaling
+            # Get bounding box to calculate scale
             min_x, min_y, max_x, max_y = sf.bbox
             width = max_x - min_x
             height = max_y - min_y
             
-            # Prevent division by zero if shapefile is a single point
+            # Prevent division by zero
             if width == 0: width = 1
             if height == 0: height = 1
             
-            # Scale coordinates to fit roughly into an 800x800 pixel window
+            # Calculate scale to fit 800x800 window
             scale_x = 800 / width
             scale_y = 800 / height
-            # Keep aspect ratio by using the smaller scale factor, and leave a 5% margin
             scale = min(scale_x, scale_y) * 0.95 
             
             for shape in shapes:
-                # ShapeType 5 means Polygon
+                # ShapeType 5 is Polygon
                 if shape.shapeType != 5:
                     continue
                     
                 points = shape.points
                 parts = list(shape.parts)
-                # Add the total number of points as the final boundary index
                 parts.append(len(points)) 
                 
                 complex_pol = []
-                # Iterate over rings (0th is usually outer, subsequent are holes)
                 for i in range(len(parts) - 1):
                     start_idx = parts[i]
                     end_idx = parts[i+1]
@@ -162,9 +155,8 @@ class Ui_MainForm(object):
                     
                     ring = QtGui.QPolygonF()
                     for px, py in ring_points:
-                        # Translate point to origin, scale it, and offset to center
+                        # Translate, scale and flip Y axis
                         screen_x = (px - min_x) * scale + 20
-                        # Y axis is flipped in screen coordinates compared to geography
                         screen_y = 850 - ((py - min_y) * scale + 20) 
                         ring.append(QtCore.QPointF(screen_x, screen_y))
                         
@@ -172,10 +164,9 @@ class Ui_MainForm(object):
                     
                 loaded_polygons.append(complex_pol)
                 
-            # Send loaded polygons to the Canvas
+            # Send polygons to canvas
             self.Canvas.setPolygons(loaded_polygons)
             
-            # Show success message
             mb = QtWidgets.QMessageBox(self.centralwidget)
             mb.setWindowTitle('Success')
             mb.setText(f'Successfully loaded {len(loaded_polygons)} polygons.')
@@ -188,6 +179,7 @@ class Ui_MainForm(object):
             error_box.exec()
 
     def runAnalysis(self, algorithm_name):
+        # Run selected algorithm for all polygons
         try:
             q = self.Canvas.getQ()
             polygons = self.Canvas.getPolygons()
@@ -197,21 +189,19 @@ class Ui_MainForm(object):
             status_messages = []
             
             for i, complex_pol in enumerate(polygons):
-                # FIX: Check if the complex polygon has an outer ring
                 if not complex_pol or complex_pol[0].isEmpty():
                     continue
                     
-                # Quick test using Min-Max Box
+                # Skip if point is outside bounding box
                 if not a.isInBoundingBox(q, complex_pol):
                     continue 
                     
-                # Choose algorithm
                 if algorithm_name == "Ray Crossing":
                     result = a.getPointPolygonPositionRC(q, complex_pol)
                 else:
                     result = a.getPointPolygonPositionWN(q, complex_pol)
                 
-                # Check results
+                # Save results
                 if result == 1:
                     highlighted_indices.append(i)
                     status_messages.append("inside")
@@ -224,8 +214,10 @@ class Ui_MainForm(object):
                 elif result is None:
                     print(f"{algorithm_name} found None on the polygon {i+1}.")
             
+            # Highlight found polygons
             self.Canvas.setHighlightedPolygons(highlighted_indices)
             
+            # Show message box
             mb = QtWidgets.QMessageBox(self.centralwidget)
             mb.setWindowTitle(f'Results: {algorithm_name}')
             
@@ -241,7 +233,7 @@ class Ui_MainForm(object):
             
         except Exception as e:
             error_box = QtWidgets.QMessageBox(self.centralwidget)
-            error_box.setWindowTitle("Critical Error")
+            error_box.setWindowTitle("Error")
             error_box.setText(f"Something went wrong: {str(e)}")
             error_box.exec()
 

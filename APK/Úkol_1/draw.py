@@ -6,7 +6,7 @@ class Draw(QWidget):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        #List of complex polygons
+        # List of polygons (index 0 is outer boundary, rest are holes)
         self.__polygons = [[QPolygonF()]]
         self.__q = QPointF(100, 100)
         self.__add_vertex = True
@@ -17,24 +17,25 @@ class Draw(QWidget):
         y = e.position().y()
         
         if self.__add_vertex:
-            # Left click: Add point to the current ring
+            # Left click: add vertex
             if e.button() == Qt.MouseButton.LeftButton:
                 self.__polygons[-1][-1].append(QPointF(x, y))
                 
-            # Right click: Finish current ring, start a new hole in the same polygon
+            # Right click: finish current ring, start drawing a hole
             elif e.button() == Qt.MouseButton.RightButton:
                 if not self.__polygons[-1][-1].isEmpty():
                     self.__polygons[-1].append(QPolygonF())
                     
-            # Middle click: Finish the whole complex polygon, start a new distinct polygon
+            # Middle click: finish whole polygon, start a completely new one
             elif e.button() == Qt.MouseButton.MiddleButton:
-                # Clean up empty rings
+                # Remove last ring if it's empty
                 if self.__polygons[-1][-1].isEmpty():
                     self.__polygons[-1].pop()
-                # Start a new complex polygon if the current one has data
+                # Start new polygon
                 if self.__polygons[-1]:
                     self.__polygons.append([QPolygonF()])
         else: 
+            # Move point q
             self.__q.setX(x)
             self.__q.setY(y)
                     
@@ -44,36 +45,39 @@ class Draw(QWidget):
         qp = QPainter(self)
         
         for i, complex_pol in enumerate(self.__polygons):
-            # Skip if there is no outer boundary
             if not complex_pol or complex_pol[0].isEmpty():
                 continue
                 
             qp.setPen(Qt.GlobalColor.black)
             
+            # Highlight polygon if point is inside
             if i in self.__highlighted_indices:
                 qp.setBrush(Qt.GlobalColor.cyan)
             else:
                 qp.setBrush(Qt.GlobalColor.yellow)
                 
-            # QPainterPath for rendering holes with OddEvenFill rule
+            # Setup path for drawing holes
             path = QPainterPath()
             path.setFillRule(Qt.FillRule.OddEvenFill) 
             
-            # Add outer boundary and all holes to the path
+            # Add all rings to path
             for ring in complex_pol:
                 if not ring.isEmpty():
                     path.addPolygon(ring)
                     
             qp.drawPath(path)
         
+        # Draw point q
         qp.setBrush(Qt.GlobalColor.green)
         r = 10
         qp.drawEllipse(int(self.__q.x() - r), int(self.__q.y() - r), 2 * r, 2 * r)
         
     def changeStatus(self):
+        # Switch between drawing and moving point
         self.__add_vertex = not self.__add_vertex
         
     def clearData(self):
+        # Clear all data on canvas
         self.__polygons = [[QPolygonF()]]
         self.__highlighted_indices.clear()
         self.__q.setX(-25)
@@ -91,7 +95,7 @@ class Draw(QWidget):
         self.repaint()
         
     def setPolygons(self, loaded_polygons):
-        # Set polygons loaded from external file
+        # Load polygons from external file
         self.__polygons = loaded_polygons
         self.__highlighted_indices.clear()
         self.repaint()
