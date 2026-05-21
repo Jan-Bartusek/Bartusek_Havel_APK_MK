@@ -311,5 +311,5 @@ if __name__ == "__main__":
     MainForm = QtWidgets.QMainWindow()
     ui = Ui_MainForm()
     ui.setupUi(MainForm)
-    MainForm.showMaximized() # MAXIMALIZOVANÉ OKNO
+    MainForm.showMaximized()
     sys.exit(app.exec())
