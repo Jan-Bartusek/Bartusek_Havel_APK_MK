@@ -135,7 +135,7 @@ class Ui_MainForm(object):
         self.toolBar.addSeparator()
         
         # =========================================================
-        # SIGNALS AND SLOTS BINDING (Tohle zapínalo tlačítka!)
+        # SIGNALS AND SLOTS BINDING
         # =========================================================
         self.actionMin_Bounding_Rectangle.triggered.connect(self.simplifyBuildingMBRClick)
         self.actionPCAS.triggered.connect(self.simplifyBuildingPCAClick)
